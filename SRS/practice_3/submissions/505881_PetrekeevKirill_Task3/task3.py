@@ -24,14 +24,34 @@ def update_tendon_sites(model, data):
             return
         
         # Обновляем ГЛОБАЛЬНЫЕ позиции site'ов через site_xpos
-        z_pos = .0
+        z_pos = 0.0
         
-        # Используем data.site_xpos вместо data.site().xpos
-        data.site_xpos[model.site("t1_block1").id] = [tangents[0][0][0], tangents[0][0][1], z_pos]
-        data.site_xpos[model.site("t1_block2").id] = [tangents[0][1][0], tangents[0][1][1], z_pos]
-        data.site_xpos[model.site("t2_block1").id] = [tangents[1][0][0], tangents[1][0][1], z_pos]
-        data.site_xpos[model.site("t2_block2").id] = [tangents[1][1][0], tangents[1][1][1], z_pos]
+        # Точки касания на первом блоке
+        t1_block1_pos = tangents[0][0]  # Глобальная позиция
+        t2_block1_pos = tangents[1][0]  # Глобальная позиция
         
+        # Точки касания на втором блоке  
+        t1_block2_pos = tangents[0][1]  # Глобальная позиция
+        t2_block2_pos = tangents[1][1]  # Глобальная позиция
+        
+        # Преобразуем глобальные позиции в относительные относительно родительских тел
+        block1_xmat = data.body("body_block1").xmat.reshape(3, 3)
+        block2_xmat = data.body("body_block2").xmat.reshape(3, 3)
+        
+        # Для body_block1
+        rel_t1_block1 = block1_xmat.T @ (np.array([t1_block1_pos[0], t1_block1_pos[1], z_pos]) - data.body("body_block1").xpos)
+        rel_t2_block1 = block1_xmat.T @ (np.array([t2_block1_pos[0], t2_block1_pos[1], z_pos]) - data.body("body_block1").xpos)
+        
+        # Для body_block2
+        rel_t1_block2 = block2_xmat.T @ (np.array([t1_block2_pos[0], t1_block2_pos[1], z_pos]) - data.body("body_block2").xpos)
+        rel_t2_block2 = block2_xmat.T @ (np.array([t2_block2_pos[0], t2_block2_pos[1], z_pos]) - data.body("body_block2").xpos)
+        
+        # Устанавливаем позиции через суставы (используем только x,y компоненты)
+        # Индексы суставов должны соответствовать порядку в модели
+        data.qpos[model.joint("t1_block1_joint").qposadr[0]:model.joint("t1_block1_joint").qposadr[0]+2] = rel_t1_block1[:2]
+        data.qpos[model.joint("t2_block1_joint").qposadr[0]:model.joint("t2_block1_joint").qposadr[0]+2] = rel_t2_block1[:2]
+        data.qpos[model.joint("t1_block2_joint").qposadr[0]:model.joint("t1_block2_joint").qposadr[0]+2] = rel_t1_block2[:2]
+        data.qpos[model.joint("t2_block2_joint").qposadr[0]:model.joint("t2_block2_joint").qposadr[0]+2] = rel_t2_block2[:2]
 
     except Exception as e:
         print(f"Error in update_tendon_sites: {e}")
